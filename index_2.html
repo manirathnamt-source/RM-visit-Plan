@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<title>RM Visit Tracker</title>
+<style>
+  :root {
+    --navy:#1a2850;
+    --primary:#1a73e8;
+    --primary-dark:#174ea6;
+    --success:#188038;
+    --danger:#d93025;
+    --warning:#f9ab00;
+    --bg:#f5f7fa;
+    --card:#ffffff;
+    --text:#202124;
+    --muted:#5f6368;
+    --border:#dadce0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Segoe UI',Roboto,Arial,sans-serif;
+    background:var(--bg);color:var(--text);padding:14px;
+  }
+  button{
+    cursor:pointer;border:none;border-radius:6px;padding:9px 16px;
+    font-size:13px;font-weight:500;transition:all .15s;
+  }
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-primary:hover{background:var(--primary-dark)}
+  .btn-primary:disabled{background:#9aa0a6;cursor:not-allowed}
+  .btn-secondary{background:#fff;color:var(--primary);border:1px solid var(--border)}
+  .btn-secondary:hover{background:#f1f3f4}
+  input,select{
+    font-family:inherit;font-size:13px;padding:7px 10px;
+    border:1px solid var(--border);border-radius:6px;background:#fff;
+  }
+
+  /* ---------- Login ---------- */
+  #login-view{
+    max-width:420px;margin:80px auto;background:var(--card);
+    padding:36px 32px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.08);
+  }
+  #login-view h1{font-size:22px;margin-bottom:6px;color:var(--primary)}
+  #login-view p{color:var(--muted);font-size:14px;margin-bottom:24px}
+  #login-view input{width:100%;margin-bottom:14px;padding:10px 12px;font-size:14px}
+  #login-view button{width:100%;padding:12px}
+  #login-error{color:var(--danger);font-size:13px;margin-top:10px;min-height:18px}
+
+  /* ---------- Main app ---------- */
+  #app-view{display:none}
+  .topbar{
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;
+    background:var(--card);padding:12px 16px;border-radius:10px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:10px;
+  }
+  .topbar h1{font-size:16px;color:var(--primary);font-weight:600}
+  .topbar .right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .refresh-indicator{
+    font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;
+  }
+  .refresh-dot{
+    width:8px;height:8px;border-radius:50%;background:var(--success);
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex;gap:4px;background:var(--card);padding:6px;border-radius:10px;
+    margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);flex-wrap:wrap;
+  }
+  .tab-btn{
+    flex:1;min-width:120px;background:transparent;color:var(--muted);
+    padding:10px 14px;border-radius:6px;font-weight:500;
+  }
+  .tab-btn.active{background:var(--primary);color:#fff}
+  .tab-btn:hover:not(.active){background:#f1f3f4;color:var(--text)}
+
+  .panel{display:none}
+  .panel.active{display:block}
+
+  /* ---------- Visit Plan: Navy header ---------- */
+  .vp-header{
+    background:var(--navy);color:#fff;padding:12px 20px;
+    border-top-left-radius:10px;border-top-right-radius:10px;
+    display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+    font-size:14px;font-weight:500;
+  }
+  .vp-header .rm-name{font-weight:700;font-size:15px}
+  .vp-header .divider{color:#ffffff55;font-weight:300}
+  .vp-header .pill{
+    background:#ffffff22;padding:3px 10px;border-radius:12px;font-size:13px;
+  }
+
+  /* Month selector row */
+  .vp-month-row{
+    background:var(--card);padding:10px 16px;border-bottom:1px solid var(--border);
+    display:flex;flex-wrap:wrap;align-items:center;gap:14px;font-size:13px;
+  }
+  .vp-month-row label{color:var(--muted);font-weight:500}
+  .vp-month-row .month-pick{
+    background:#fef7e0;border:1px solid #f9ab00;border-radius:4px;
+    padding:5px 10px;font-weight:600;color:#5f4b00;
+  }
+  .vp-subtitle{color:var(--primary-dark);font-weight:500}
+
+  /* ---------- KPI row ---------- */
+  .vp-kpi-row{
+    display:grid;grid-template-columns:repeat(5,1fr);
+    background:var(--card);border-bottom:1px solid var(--border);
+  }
+  .vp-kpi{
+    padding:10px 14px;border-right:1px solid var(--border);text-align:center;
+  }
+  .vp-kpi:last-child{border-right:none}
+  .vp-kpi .label{
+    font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+    padding:3px 0;border-radius:4px;margin-bottom:4px;display:block;color:#fff;
+  }
+  .vp-kpi .value{font-size:22px;font-weight:700;color:var(--text)}
+  .vp-kpi.total    .label{background:#1a73e8}
+  .vp-kpi.covered  .label{background:#34a853}
+  .vp-kpi.cm       .label{background:#8430ce}
+  .vp-kpi.notvis   .label{background:#ea4335}
+  .vp-kpi.reimb    .label{background:#fb8c00}
+
+  /* ---------- Legend ---------- */
+  .vp-legend{
+    background:var(--card);padding:8px 12px;border-bottom:1px solid var(--border);
+    display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:12px;
+  }
+  .legend-item{
+    display:flex;align-items:center;padding:2px 6px;gap:4px;
+  }
+  .legend-badge{
+    display:inline-block;min-width:26px;padding:2px 6px;border-radius:3px;
+    color:#fff;font-weight:700;font-size:11px;text-align:center;
+  }
+
+  /* ---------- Grid ---------- */
+  .vp-grid-wrap{
+    background:var(--card);overflow-x:auto;overflow-y:visible;
+    border-bottom-left-radius:10px;border-bottom-right-radius:10px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06);
+  }
+  .vp-grid{
+    border-collapse:collapse;font-size:12px;min-width:100%;
+  }
+  .vp-grid th,.vp-grid td{
+    border:1px solid #e5e7eb;padding:0;text-align:center;
+    height:34px;white-space:nowrap;
+  }
+  .vp-grid thead th{
+    background:var(--navy);color:#fff;font-weight:600;font-size:11px;
+    padding:6px 8px;position:sticky;top:0;z-index:3;
+  }
+  .vp-grid thead th.sticky-col{z-index:5}
+  .vp-grid thead th.day-header{min-width:44px;line-height:1.2;padding:5px 2px}
+  .vp-grid thead th.day-header small{display:block;font-size:10px;opacity:.85;font-weight:400}
+  .vp-grid thead th.day-header.weekend{background:#394670}
+  .vp-grid tbody td.sticky-col{
+    background:#f8f9fa;font-weight:500;text-align:left;padding:6px 10px;
+  }
+  .vp-grid tbody td.store-cell{font-weight:600}
+  .vp-grid tbody td.cm-cell{color:var(--muted);font-style:italic;font-size:11px}
+  .sticky-col{position:sticky;left:0;z-index:2}
+  .sticky-col.col2{left:170px}
+  .vp-grid thead th.sticky-col     {left:0}
+  .vp-grid thead th.sticky-col.col2{left:170px}
+
+  .vp-grid tbody td.day-cell{padding:0;min-width:44px;position:relative}
+  .vp-grid tbody td.day-cell.weekend{background:#f1f3f4}
+  .day-select{
+    width:100%;height:32px;border:none;background:transparent;
+    font-size:11px;font-weight:700;text-align:center;text-align-last:center;
+    cursor:pointer;color:var(--muted);
+    appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    padding:0 2px;
+  }
+  .day-select:focus{outline:2px solid var(--primary);outline-offset:-2px}
+  .day-cell.has-value{color:#fff}
+  .day-cell.has-value .day-select{color:#fff}
+
+  /* Type colors */
+  .day-cell.type-R   {background:#34a853}
+  .day-cell.type-A   {background:#1a73e8}
+  .day-cell.type-CM  {background:#d01884}
+  .day-cell.type-E   {background:#ea4335}
+  .day-cell.type-O   {background:#8430ce}
+  .day-cell.type-S   {background:#00897b}
+  .day-cell.type-H   {background:#9aa0a6}
+  .day-cell.type-OFC {background:#f9ab00}
+  .day-cell.type-L   {background:#fb8c00}
+  .day-cell.type-WO  {background:#616161}
+
+  /* Locked badge (read-only) */
+  .locked-badge{
+    display:inline-block;width:100%;height:32px;line-height:32px;
+    color:#fff;font-weight:700;font-size:11px;
+  }
+  .locked-badge.empty{color:var(--muted);background:#fafbfc}
+
+  /* Submit bar */
+  .vp-submit-bar{
+    background:var(--card);padding:12px 16px;display:flex;justify-content:space-between;
+    align-items:center;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border);
+  }
+  .locked-indicator{
+    background:#fef7e0;color:#5f4b00;padding:6px 12px;border-radius:20px;
+    font-size:13px;font-weight:500;
+  }
+
+  /* ---------- Tables (other tabs) ---------- */
+  .panel.other{
+    background:var(--card);padding:20px;border-radius:10px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06);
+  }
+  .panel-head{
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
+    gap:10px;margin-bottom:16px;
+  }
+  .panel-head h2{font-size:16px;color:var(--primary);font-weight:600}
+  .table-wrap{overflow-x:auto}
+  table.data{width:100%;border-collapse:collapse;font-size:14px}
+  table.data thead th{
+    background:#f1f3f4;text-align:left;padding:10px 12px;
+    font-weight:600;color:var(--muted);border-bottom:2px solid var(--border);
+    font-size:12px;text-transform:uppercase;letter-spacing:.4px;
+  }
+  table.data tbody td{padding:10px 12px;border-bottom:1px solid var(--border)}
+  table.data tbody tr:hover{background:#fafbfc}
+  tr.missed{background:#fce8e6 !important}
+  tr.missed:hover{background:#fadbd8 !important}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600}
+  .badge.good{background:#e6f4ea;color:var(--success)}
+  .badge.mid{background:#fef7e0;color:#b06000}
+  .badge.bad{background:#fce8e6;color:var(--danger)}
+  .total-row{font-weight:600;background:#f8f9fa}
+  .empty{text-align:center;padding:30px;color:var(--muted);font-size:14px}
+
+  .top-perf-banner{
+    background:linear-gradient(135deg,#faf5ff,#fff);padding:10px 14px;
+    border-radius:8px;border-left:4px solid #8430ce;margin-bottom:12px;font-size:13px;
+  }
+
+  .toast{
+    position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;
+    padding:12px 18px;border-radius:6px;font-size:14px;
+    box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transition:opacity .25s;
+    z-index:1000;max-width:380px;
+  }
+  .toast.show{opacity:1}
+  .toast.error{background:var(--danger)}
+  .toast.success{background:var(--success)}
+  .spinner{
+    display:inline-block;width:14px;height:14px;border:2px solid #fff;
+    border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;
+    vertical-align:middle;margin-right:6px;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ========== LOGIN ========== -->
+<div id="login-view">
+  <h1>RM Visit Tracker</h1>
+  <p>Enter your name to access your dashboard.</p>
+  <input id="login-input" type="text" placeholder="Your Name (as in store mapping)" autofocus>
+  <button class="btn-primary" id="login-btn" onclick="doLogin()">Sign In</button>
+  <div id="login-error"></div>
+</div>
+
+<!-- ========== MAIN APP ========== -->
+<div id="app-view">
+
+  <div class="topbar">
+    <h1>📊 RM Visit Tracker</h1>
+    <div class="right">
+      <input type="month" id="month-picker" onchange="onMonthChange()">
+      <span class="refresh-indicator">
+        <span class="refresh-dot"></span>
+        <span id="refresh-status">Auto-refresh on</span>
+      </span>
+      <button class="btn-secondary" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="plan"   onclick="switchTab('plan')">📅 Visit Plan</button>
+    <button class="tab-btn"        data-tab="actual" onclick="switchTab('actual')">✅ Planned vs Actual</button>
+    <button class="tab-btn"        data-tab="travel" onclick="switchTab('travel')">🚗 Travel Log</button>
+  </div>
+
+  <!-- TAB 1: VISIT PLAN -->
+  <div class="panel active" id="panel-plan">
+    <div id="visit-plan-container"><div class="empty">Loading…</div></div>
+  </div>
+
+  <!-- TAB 2: PLANNED VS ACTUAL -->
+  <div class="panel other" id="panel-actual">
+    <div id="top-perf-box"></div>
+    <div class="panel-head">
+      <h2>Planned vs Actual Visits</h2>
+      <small style="color:var(--muted)">Rows in red indicate missed visits</small>
+    </div>
+    <div id="actual-content"><div class="empty">Loading…</div></div>
+  </div>
+
+  <!-- TAB 3: TRAVEL LOG -->
+  <div class="panel other" id="panel-travel">
+    <div class="panel-head">
+      <h2>Monthly Travel Log (Actual)</h2>
+      <small style="color:var(--muted)">From store-to-store movement</small>
+    </div>
+    <div id="travel-content"><div class="empty">Loading…</div></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ STATE ============ */
+let currentRM = null;
+let currentMonth = null;
+let currentData = null;
+let refreshTimer = null;
+let isSubmitting = false;
+/* Map of storeName -> { day -> visitType } while editing */
+let draftGrid = {};
+
+/* ============ UTIL ============ */
+function $(id){ return document.getElementById(id); }
+function showToast(msg, type){
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(()=> t.className = 'toast', 3500);
+}
+function currentMonthDefault(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function monthLabel(ym){
+  const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const [y, m] = ym.split('-').map(Number);
+  return names[m-1] + '-' + String(y).slice(-2);
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============ LOGIN ============ */
+$('login-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+function doLogin(){
+  const name = $('login-input').value.trim();
+  if (!name){ $('login-error').textContent = 'Please enter your name.'; return; }
+  const btn = $('login-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Signing in…';
+  $('login-error').textContent = '';
+
+  google.script.run
+    .withSuccessHandler(res => {
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      if (res.success){
+        currentRM = res.rmName;
+        currentMonth = currentMonthDefault();
+        $('login-view').style.display = 'none';
+        $('app-view').style.display = 'block';
+        $('month-picker').value = currentMonth;
+        loadDashboard();
+        startAutoRefresh();
+      } else {
+        $('login-error').textContent = res.message;
+      }
+    })
+    .withFailureHandler(err => {
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      $('login-error').textContent = 'Server error: ' + err.message;
+    })
+    .authenticateRM(name);
+}
+
+function doLogout(){
+  stopAutoRefresh();
+  currentRM = null;
+  currentData = null;
+  draftGrid = {};
+  $('login-input').value = '';
+  $('app-view').style.display = 'none';
+  $('login-view').style.display = 'block';
+}
+
+/* ============ TABS ============ */
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  $('panel-' + tab).classList.add('active');
+}
+
+/* ============ MONTH CHANGE ============ */
+function onMonthChange(){
+  currentMonth = $('month-picker').value;
+  draftGrid = {};          // drop unsaved edits when switching months
+  loadDashboard();
+}
+
+/* ============ AUTO-REFRESH ============ */
+function startAutoRefresh(){
+  stopAutoRefresh();
+  refreshTimer = setInterval(() => {
+    if (!isSubmitting && !hasUnsavedDraft()) loadDashboard(true);
+  }, 30000);
+}
+function stopAutoRefresh(){ if (refreshTimer){ clearInterval(refreshTimer); refreshTimer = null; } }
+function hasUnsavedDraft(){
+  if (currentData && currentData.plan && currentData.plan.locked) return false;
+  return Object.keys(draftGrid).some(s => Object.keys(draftGrid[s] || {}).length > 0);
+}
+
+/* ============ LOAD ============ */
+function loadDashboard(silent){
+  if (!currentRM || !currentMonth) return;
+  if (!silent) $('refresh-status').textContent = 'Refreshing…';
+
+  google.script.run
+    .withSuccessHandler(data => {
+      currentData = data;
+      // Seed draftGrid with server plan (if locked, will be readonly anyway)
+      draftGrid = {};
+      Object.keys(data.plan.grid || {}).forEach(s => {
+        draftGrid[s] = Object.assign({}, data.plan.grid[s]);
+      });
+      renderVisitPlan(data);
+      renderComparison(data);
+      renderTravel(data);
+      $('refresh-status').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    })
+    .withFailureHandler(err => {
+      $('refresh-status').textContent = 'Error';
+      showToast('Error loading data: ' + err.message, 'error');
+    })
+    .getDashboardData(currentRM, currentMonth);
+}
+
+/* ============ RENDER: VISIT PLAN ============ */
+function renderVisitPlan(data){
+  const c = $('visit-plan-container');
+  const kpi = data.planKPI;
+  const locked = data.plan.locked;
+  const cmsLabel = data.uniqueCMs.length ? data.uniqueCMs.join(', ') : '—';
+
+  let html = '';
+
+  // Navy header
+  html += '<div class="vp-header">';
+  html += '<span>📋</span>';
+  html += '<span class="rm-name">' + escapeHtml(data.rmName.toUpperCase()) + '</span>';
+  html += '<span class="divider">|</span><span>VISIT PLAN</span>';
+  html += '<span class="divider">|</span><span class="pill">' + data.stores.length + ' Stores</span>';
+  html += '<span class="divider">|</span><span>CMs: ' + escapeHtml(cmsLabel) + '</span>';
+  html += '</div>';
+
+  // Month + subtitle row
+  html += '<div class="vp-month-row">';
+  html += '<label>Month:</label><span class="month-pick">' + monthLabel(data.month) + '</span>';
+  html += '<span class="vp-subtitle">Visit Plan for ' + monthLabel(data.month) +
+          ' &nbsp;|&nbsp; ' + data.stores.length + ' stores &nbsp;|&nbsp; ' +
+          data.dayMeta.length + ' days</span>';
+  html += '</div>';
+
+  // KPI row
+  html += '<div class="vp-kpi-row">';
+  html += kpiCard('total',   'Total Visits',    kpi.totalVisits);
+  html += kpiCard('covered', 'Stores Covered',  kpi.storesCovered + '/' + kpi.totalStores);
+  html += kpiCard('cm',      'CM Accompany',    kpi.cmAccompany);
+  html += kpiCard('notvis',  'Not Visited',     kpi.notVisited);
+  html += kpiCard('reimb',   'Travel Reimb ₹',  kpi.travelReimb.toLocaleString('en-IN'));
+  html += '</div>';
+
+  // Legend
+  html += '<div class="vp-legend">';
+  Object.keys(data.visitTypes).forEach(code => {
+    const t = data.visitTypes[code];
+    html += '<span class="legend-item">' +
+            '<span class="legend-badge" style="background:' + t.color + '">' + code + '</span>' +
+            '<span>' + t.label + '</span></span>';
+  });
+  html += '</div>';
+
+  // Grid
+  if (!data.stores.length){
+    html += '<div class="empty">No stores mapped to you. Contact admin.</div>';
+    c.innerHTML = html;
+    return;
+  }
+
+  html += '<div class="vp-grid-wrap"><table class="vp-grid"><thead><tr>';
+  html += '<th class="sticky-col" style="min-width:170px;text-align:left;padding-left:10px">Store Name</th>';
+  html += '<th class="sticky-col col2" style="min-width:120px;text-align:left;padding-left:10px">CM</th>';
+  data.dayMeta.forEach(dm => {
+    html += '<th class="day-header' + (dm.weekend ? ' weekend' : '') + '">' +
+            dm.day + '<small>' + dm.weekday + '</small></th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  data.stores.forEach(store => {
+    html += '<tr>';
+    html += '<td class="sticky-col store-cell">' + escapeHtml(store.storeName) + '</td>';
+    html += '<td class="sticky-col col2 cm-cell">' + escapeHtml(store.cmName || '—') + '</td>';
+    data.dayMeta.forEach(dm => {
+      const storeGrid = draftGrid[store.storeName] || {};
+      const currentVal = storeGrid[dm.day] || '';
+      if (locked){
+        const typeCls = currentVal ? ' type-' + currentVal : '';
+        const classes = 'day-cell' + (currentVal ? ' has-value' : '') + typeCls +
+                        (dm.weekend ? ' weekend' : '');
+        html += '<td class="' + classes + '"><span class="locked-badge' +
+                (currentVal ? '' : ' empty') + '">' + (currentVal || '') + '</span></td>';
+      } else {
+        const typeCls = currentVal ? ' type-' + currentVal : '';
+        const classes = 'day-cell' + (currentVal ? ' has-value' : '') + typeCls +
+                        (dm.weekend ? ' weekend' : '');
+        html += '<td class="' + classes + '" data-store="' + escapeHtml(store.storeName) +
+                '" data-day="' + dm.day + '">';
+        html += '<select class="day-select" onchange="onCellChange(this)">';
+        html += '<option value=""' + (!currentVal ? ' selected' : '') + '>–</option>';
+        Object.keys(data.visitTypes).forEach(code => {
+          html += '<option value="' + code + '"' +
+                  (currentVal === code ? ' selected' : '') + '>' + code + '</option>';
+        });
+        html += '</select></td>';
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  // Submit bar
+  html += '<div class="vp-submit-bar">';
+  if (locked){
+    html += '<span class="locked-indicator">🔒 Plan locked on ' +
+            (data.plan.submittedOn || '—') + ' — no edits allowed</span>';
+    html += '<span style="color:var(--muted);font-size:12px">Switch month to plan another period.</span>';
+  } else {
+    html += '<span style="color:var(--muted);font-size:13px">' +
+            '💡 Fill in visit types for each store-day. Weekends auto-styled. ' +
+            'Submit to lock — no edits after.</span>';
+    html += '<button class="btn-primary" id="submit-plan-btn" onclick="submitPlan()">Submit &amp; Lock Plan</button>';
+  }
+  html += '</div>';
+
+  c.innerHTML = html;
+}
+
+function kpiCard(cls, label, value){
+  return '<div class="vp-kpi ' + cls + '"><span class="label">' + label +
+         '</span><div class="value">' + value + '</div></div>';
+}
+
+/* ============ CELL CHANGE ============ */
+function onCellChange(sel){
+  const td = sel.closest('td');
+  const store = td.dataset.store;
+  const day = Number(td.dataset.day);
+  const val = sel.value;
+
+  if (!draftGrid[store]) draftGrid[store] = {};
+  if (val) draftGrid[store][day] = val;
+  else delete draftGrid[store][day];
+
+  // Rebuild td classList
+  const weekend = td.classList.contains('weekend');
+  td.className = 'day-cell' + (val ? ' has-value type-' + val : '') + (weekend ? ' weekend' : '');
+
+  // Live update KPI cards (totals only)
+  updateLiveKPIs();
+}
+
+function updateLiveKPIs(){
+  if (!currentData) return;
+  const types = currentData.visitTypes;
+  let total = 0, cm = 0;
+  const covered = new Set();
+  Object.keys(draftGrid).forEach(store => {
+    Object.keys(draftGrid[store]).forEach(d => {
+      const vt = draftGrid[store][d];
+      if (!types[vt]) return;
+      if (types[vt].isVisit){ total++; covered.add(store); }
+      if (types[vt].isCM){ cm++; }
+    });
+  });
+  const totalStores = currentData.stores.length;
+  // Update the displayed KPI cells
+  const valEls = document.querySelectorAll('.vp-kpi .value');
+  if (valEls.length === 5){
+    valEls[0].textContent = total;
+    valEls[1].textContent = covered.size + '/' + totalStores;
+    valEls[2].textContent = cm;
+    valEls[3].textContent = Math.max(0, totalStores - covered.size);
+    // Travel reimb left as server-computed (changes on refresh)
+  }
+}
+
+/* ============ SUBMIT ============ */
+function submitPlan(){
+  const cells = [];
+  Object.keys(draftGrid).forEach(store => {
+    Object.keys(draftGrid[store]).forEach(d => {
+      cells.push({ storeName: store, day: Number(d), visitType: draftGrid[store][d] });
+    });
+  });
+  if (!cells.length){ showToast('Please fill in at least one cell.', 'error'); return; }
+  if (!confirm('Submit & lock plan with ' + cells.length + ' entries? No edits allowed after.')) return;
+
+  const btn = $('submit-plan-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Submitting…';
+  isSubmitting = true;
+
+  google.script.run
+    .withSuccessHandler(res => {
+      isSubmitting = false;
+      if (res.success){
+        showToast(res.message, 'success');
+        loadDashboard();
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Submit & Lock Plan';
+        showToast(res.message, 'error');
+      }
+    })
+    .withFailureHandler(err => {
+      isSubmitting = false;
+      btn.disabled = false;
+      btn.textContent = 'Submit & Lock Plan';
+      showToast('Error: ' + err.message, 'error');
+    })
+    .submitVisitPlan(currentRM, currentMonth, cells);
+}
+
+/* ============ RENDER: PLANNED VS ACTUAL ============ */
+function renderComparison(data){
+  // Top performer banner
+  const topBox = $('top-perf-box');
+  if (data.topPerformer){
+    topBox.innerHTML = '<div class="top-perf-banner">🏆 <b>Top Performer:</b> ' +
+                       escapeHtml(data.topPerformer.rmName) +
+                       ' — ' + data.topPerformer.completion + '% completion (' +
+                       data.topPerformer.totalActual + '/' + data.topPerformer.totalPlanned +
+                       ' visits)</div>';
+  } else {
+    topBox.innerHTML = '';
+  }
+
+  const rows = data.comparison.rows;
+  const content = $('actual-content');
+  if (!rows || rows.length === 0){
+    content.innerHTML = '<div class="empty">No data available for this month.</div>';
+    return;
+  }
+  let html = '<div class="table-wrap"><table class="data">';
+  html += '<thead><tr><th>Store Name</th><th>Planned</th><th>Actual</th><th>Completion %</th><th>Status</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const cls = r.missed ? 'missed' : '';
+    const badgeClass = r.completion >= 100 ? 'good' : (r.completion >= 50 ? 'mid' : 'bad');
+    const statusTxt = r.missed ? '❌ Missed' : (r.planned === 0 ? '—' : '✅ On Track');
+    html += '<tr class="' + cls + '">';
+    html += '<td>' + escapeHtml(r.storeName) + '</td>';
+    html += '<td>' + r.planned + '</td>';
+    html += '<td>' + r.actual + '</td>';
+    html += '<td><span class="badge ' + badgeClass + '">' + r.completion + '%</span></td>';
+    html += '<td>' + statusTxt + '</td>';
+    html += '</tr>';
+  });
+  const k = data.comparison.kpi;
+  html += '<tr class="total-row"><td>TOTAL</td><td>' + k.totalPlanned +
+          '</td><td>' + k.totalActual + '</td><td>' + k.completion + '%</td><td></td></tr>';
+  html += '</tbody></table></div>';
+  content.innerHTML = html;
+}
+
+/* ============ RENDER: TRAVEL LOG ============ */
+function renderTravel(data){
+  const t = data.travel;
+  const content = $('travel-content');
+  if (!t.log || t.log.length === 0){
+    content.innerHTML = '<div class="empty">No store-to-store movement recorded this month.</div>';
+    return;
+  }
+  let html = '<div style="margin-bottom:14px;padding:12px;background:#e6f4ea;border-radius:8px">';
+  html += '<b>Total Distance Travelled:</b> <span style="font-size:18px;color:var(--success);font-weight:600">' +
+          t.totalKM + ' KM</span></div>';
+  html += '<div class="table-wrap"><table class="data">';
+  html += '<thead><tr><th>Date</th><th>From Store</th><th>To Store</th><th>Distance (KM)</th></tr></thead><tbody>';
+  t.log.forEach(leg => {
+    html += '<tr>';
+    html += '<td>' + leg.date + '</td>';
+    html += '<td>' + escapeHtml(leg.fromStore) + '</td>';
+    html += '<td>' + escapeHtml(leg.toStore) + '</td>';
+    html += '<td>' + leg.distance + (leg.missing ? ' <span style="color:var(--warning)" title="Not in Distance Matrix">⚠</span>' : '') + '</td>';
+    html += '</tr>';
+  });
+  html += '<tr class="total-row"><td colspan="3">TOTAL</td><td>' + t.totalKM + '</td></tr>';
+  html += '</tbody></table></div>';
+  content.innerHTML = html;
+}
+</script>
+
+</body>
+</html>
